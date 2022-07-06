@@ -21,6 +21,7 @@
                 "C:\\Users\\dengb\\Documents\\Arduino\\hardware\\MegaCoreX\\megaavr\\variants\\48pin-standard",
                 "C:\\Users\\dengb\\Documents\\Arduino\\libraries\\TMCStepper\\src",
                 "C:\\Users\\dengb\\Documents\\Arduino\\hardware\\MegaCoreX\\megaavr\\libraries\\SPI\\src",
+                "C:\\Users\\dengb\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
                 "c:\\users\\dengb\\appdata\\local\\arduino15\\packages\\dxcore\\tools\\avr-gcc\\7.3.0-atmel3.6.1-azduino4b\\lib\\gcc\\avr\\7.3.0\\include",
                 "c:\\users\\dengb\\appdata\\local\\arduino15\\packages\\dxcore\\tools\\avr-gcc\\7.3.0-atmel3.6.1-azduino4b\\lib\\gcc\\avr\\7.3.0\\include-fixed",
                 "c:\\users\\dengb\\appdata\\local\\arduino15\\packages\\dxcore\\tools\\avr-gcc\\7.3.0-atmel3.6.1-azduino4b\\avr\\include"

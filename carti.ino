@@ -1,158 +1,130 @@
 #include <Arduino.h>
-#include <TMCStepper.h> // Branch: Release_v1
+#include <TMCStepper.h>
+#include <Adafruit_NeoPixel.h>
+#include "BaseMovement.h"
+#include "SerialCommunication.h"
 
-constexpr uint8_t EN_PIN   = 16;
-constexpr uint8_t DIAG_PIN = 6;
+#define ARGBLED 17
+#define BEEPPIN 12
 
-constexpr uint8_t sgthrs = 130;
-constexpr uint8_t semin = 6;
-constexpr uint8_t semax = 2;
+double x, vx, y, vy, r, vr;
+unsigned long lasttime;
 
-TMC2300Stepper driver(Serial1, 1.60, 0);
-TMC2300Stepper driver2(Serial1, 1.60, 1);
-TMC2300Stepper driver3(Serial1, 1.60, 2);
-TMC2300Stepper driver4(Serial1, 1.60, 3);
+Adafruit_NeoPixel led(1, ARGBLED, NEO_GRB + NEO_KHZ800);
 
-void setup() {
-  pinMode(EN_PIN, OUTPUT);
-  pinMode(DIAG_PIN, INPUT);
-  pinMode(12, OUTPUT);
-
+void setup()
+{
+  pinMode(BEEPPIN, OUTPUT);
   Serial2.begin(115200); // Init serial port and set baudrate
-  while (!Serial2);      // Wait for serial port to initialize
-
-  driver.begin(115200); // Set SW UART baudrate
-
-  auto version = driver.version();
-  while (version == 0) {
-    Serial2.print("ERR#DriverCommError");
-  }
-
-  driver.GSTAT(0b111); // Reset error flags
-  driver2.GSTAT(0b111); // Reset error flags
-  driver3.GSTAT(0b111); // Reset error flags
-  driver4.GSTAT(0b111); // Reset error flags
-
-  driver.enable_drv(true);
-  driver2.enable_drv(true);
-  driver3.enable_drv(true);
-  driver4.enable_drv(true);
-
-  driver.rms_current(1600);
-  driver2.rms_current(1600);
-  driver3.rms_current(1600);
-  driver4.rms_current(1600);
-  driver.microsteps(16);
-  driver2.microsteps(16);
-  driver3.microsteps(16);
-  driver4.microsteps(16);
-  driver.TCOOLTHRS(0x3FF); // 10bit max
-  driver2.TCOOLTHRS(0x3FF); // 10bit max
-  driver3.TCOOLTHRS(0x3FF); // 10bit max
-  driver4.TCOOLTHRS(0x3FF); // 10bit max
-
-  driver.semin(semin);   // If SG value is below this * 32, the current will be increased
-  driver2.semin(semin);   // If SG value is below this * 32, the current will be increased
-  driver3.semin(semin);   // If SG value is below this * 32, the current will be increased
-  driver4.semin(semin);   // If SG value is below this * 32, the current will be increased
-
-  driver.semax(semax);   // If SG value is over (this + semin + 1) * 32, the current will be decreased
-  driver2.semax(semax);   // If SG value is over (this + semin + 1) * 32, the current will be decreased
-  driver3.semax(semax);   // If SG value is over (this + semin + 1) * 32, the current will be decreased
-  driver4.semax(semax);   // If SG value is over (this + semin + 1) * 32, the current will be decreased
-
-  driver.sedn(0b00);     // Set current reduction rate
-  driver2.sedn(0b00);     // Set current reduction rate
-  driver3.sedn(0b00);     // Set current reduction rate
-  driver4.sedn(0b00);     // Set current reduction rate
-
-  driver.seup(0b01);     // Set current increase rate
-  driver2.seup(0b01);     // Set current increase rate
-  driver3.seup(0b01);     // Set current increase rate
-  driver4.seup(0b01);     // Set current increase rate
-
-  driver.SGTHRS(sgthrs); // If SG value falls below this * 2 then the diag output will become active
-  driver2.SGTHRS(sgthrs); // If SG value falls below this * 2 then the diag output will become active
-  driver3.SGTHRS(sgthrs); // If SG value falls below this * 2 then the diag output will become active
-  driver4.SGTHRS(sgthrs); // If SG value falls below this * 2 then the diag output will become active
-  driver.VACTUAL(11000);
-  driver2.VACTUAL(11000);
-  driver3.VACTUAL(11000);
-  driver4.VACTUAL(11000);
-  driverDisable();
-  Serial2.println("OK#Standby");
+  while (!Serial2)
+    ; // Wait for serial port to initialize
+  led.begin();
+  BMinitialize();
+  led.clear();
+  led.setPixelColor(0, led.Color(25, 10, 0));
+  led.show();
+  beep(50);
+  SendPack("SB", "", "", "", "");
 }
 
-void beep(short len) {
-  digitalWrite(12, HIGH);
+void beep(short len)
+{
+  digitalWrite(BEEPPIN, HIGH);
   delay(len);
-  digitalWrite(12, LOW);
+  digitalWrite(BEEPPIN, LOW);
 }
 
-void driverEnable() {
-  digitalWrite(EN_PIN, HIGH);
-}
-
-void driverDisable() {
-  digitalWrite(EN_PIN, LOW);
-}
-
-void driverMove(short LH, short RH, short LB, short RB, bool timing = true) {
-  if (abs(LH) > 11000 || abs(RH) > 11000 || abs(LB) > 11000 || abs(RB) > 11000) {
-    Serial2.print("ERR#Unreliable speed#");
-    Serial2.print(LH);
-    Serial2.print("#");
-    Serial2.print(RH);
-    Serial2.print("#");
-    Serial2.print(LB);
-    Serial2.print("#");
-    Serial2.println(RB);
-    return;
+void loop()
+{
+  if (Serial2.available() > 0)
+  {
+    Pack data = ReadPack();
+    if (data.command.length() > 0)
+      if (data.command.equals("ST")) //里程计
+      {
+        SendPack("CP", "ST", String(x, 4) + "," + String(vx, 4), String(y, 4) + "," + String(vy, 4), String(r, 4) + "," + String(vr, 4));
+      }
+      else if (data.command.equals("BK")) //刹车
+      {
+        Break();
+        vx = 0;
+        vy = 0;
+        vr = 0;
+        SendPack("CP", "BK", "", "", "");
+      }
+      else if (data.command.equals("MV")) //以设定速度持续移动
+      {
+        MoveAtVelocity(data.arg1.toDouble(), data.arg2.toDouble(), data.arg3.toDouble());
+        vx = data.arg1.toDouble();
+        vy = data.arg2.toDouble();
+        vr = data.arg3.toDouble();
+        lasttime = millis();
+        SendPack("CP", "MV", "", "", "");
+      }
+      else if (data.command.equals("MD")) //移动指定距离
+      {
+        Move(data.arg1.toDouble(), data.arg2.toDouble(), data.arg3.toDouble(), data.arg4.toDouble());
+        vx = 0;
+        vy = 0;
+        vr = 0;
+        x += data.arg1.toDouble();
+        y += data.arg2.toDouble();
+        r += data.arg3.toDouble();
+        SendPack("CP", "MD", "", "", "");
+      }
+      else if (data.command.equals("MT")) //移动指定时长
+      {
+        MoveAtVelocityUntil(data.arg1.toDouble(), data.arg2.toDouble(), data.arg3.toDouble(), data.arg4.toDouble());
+        vx = 0;
+        vy = 0;
+        vr = 0;
+        double l = data.arg4.toDouble();
+        x += data.arg1.toDouble() * l;
+        y += data.arg2.toDouble() * l;
+        r += data.arg3.toDouble() * l;
+        SendPack("CP", "MT", "", "", "");
+      }
+      else if (data.command.equals("BB")) //蜂鸣器响
+      {
+        beep(data.arg1.toInt());
+        SendPack("CP", "BB", "", "", "");
+      }
+      else if (data.command.equals("LT")) // RGB灯泡
+      {
+        led.clear();
+        led.setPixelColor(0, led.Color(data.arg1.toDouble(), data.arg2.toDouble(), data.arg3.toDouble()));
+        led.show();
+        SendPack("CP", "LT", "", "", "");
+      }
+      else if (data.command.equals("CL")) //清空里程计
+      {
+        x = 0;
+        y = 0;
+        r = 0;
+        SendPack("CP", "CL", "", "", "");
+      }
+      else if (data.command.equals("MF")) //关闭电机
+      {
+        driverDisable();
+        SendPack("CP", "MF", "", "", "");
+      }
+      else if (data.command.equals("MU")) //开启电机
+      {
+        driverEnable();
+        SendPack("CP", "MU", "", "", "");
+      }
+      else if (data.command.equals("QA")) //询问底盘移动能力
+      {
+        SendPack("CP", "QA", "X", "Y", "R"); //能够沿X、Y轴移动，同时支持R旋转
+      }
+      else
+      {
+        SendPack("ER", data.command, "", "", ""); //无效指令
+      }
   }
-  
-  if (timing)driverDisable();
-  driver.VACTUAL(LH);
-  driver2.VACTUAL(RH);
-  driver3.VACTUAL(LB);
-  driver4.VACTUAL(RB);
-  driverEnable();
-}
-
-short inline cs(double s) {
-  return s / 0.0000209390195767;
-}
-
-void MoveAtVelocity(double f, double r,double turnr) {
-  short LH = cs(f+r+(turnr*0.109));
-  short RH = cs(f-r-(turnr*0.109));
-  short LB = cs(f-r+(turnr*0.109));
-  short RB = cs(f+r-(turnr*0.109));
-  driverMove(LH, RH, LB, RB, false);
-}
-
-void Break(){
-  driver.VACTUAL(0);
-  driver2.VACTUAL(0);
-  driver3.VACTUAL(0);
-  driver4.VACTUAL(0);
-}
-
-void Move(double f,double r,double turnr,double t){
-  MoveAtVelocity(f/t,r/t,turnr/t);
-  delay(t*1000);
-  Break();
-}
-
-String ReadSerial(){
-  String seralstr= "";
-  while(Serial.available()){
-    
-  }
-}
-
-void loop() {
-  if (Serial.available()){
-    
-  }
-  //MoveAtVelocity(0.1, 0.1,0.17);
+  double dtime = (0.1 + (millis() - lasttime)) / 1000.0;
+  x += vx * dtime;
+  y += vy * dtime;
+  r += vr * dtime;
+  lasttime = millis();
 }

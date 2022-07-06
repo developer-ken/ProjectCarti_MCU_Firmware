@@ -125,6 +125,7 @@ void Break()
   driver2.VACTUAL(0);
   driver3.VACTUAL(0);
   driver4.VACTUAL(0);
+  driverEnable();
 }
 
 void Move(double f, double r, double turnr, double t)

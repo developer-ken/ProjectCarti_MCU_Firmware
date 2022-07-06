@@ -8,6 +8,7 @@
 #define BEEPPIN 12
 
 double x, vx, y, vy, r, vr;
+double bx, by, br;
 unsigned long lasttime;
 
 Adafruit_NeoPixel led(1, ARGBLED, NEO_GRB + NEO_KHZ800);
@@ -103,12 +104,16 @@ void loop()
         r = 0;
         SendPack("CP", "CL", "", "", "");
       }
-      else if (data.command.equals("MF")) //关闭电机
+      else if (data.command.equals("MF")) //刹停并关闭电机
       {
+        Break();
+        vx = 0;
+        vy = 0;
+        vr = 0;
         driverDisable();
         SendPack("CP", "MF", "", "", "");
       }
-      else if (data.command.equals("MU")) //开启电机
+      else if (data.command.equals("MU")) //开启电机并保证刹停状态
       {
         driverEnable();
         SendPack("CP", "MU", "", "", "");

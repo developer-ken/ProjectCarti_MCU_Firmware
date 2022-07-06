@@ -1,0 +1,7 @@
+{
+    "configuration": "pinout=48pin_standard,resetpin=reset,BOD=2v6,clock=internal_16MHz,bootloader=no_bootloader",
+    "board": "MegaCoreX:megaavr:4809",
+    "port": "COM6",
+    "sketch": "carti.ino",
+    "output": "build"
+}

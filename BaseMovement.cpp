@@ -27,18 +27,18 @@ char BMinitialize()
   driver3.enable_drv(true);
   driver4.enable_drv(true);
 
-  driver.rms_current(1600);
-  driver2.rms_current(1600);
-  driver3.rms_current(1600);
-  driver4.rms_current(1600);
+  driver.rms_current(COIL_CURRENT_RMS);
+  driver2.rms_current(COIL_CURRENT_RMS);
+  driver3.rms_current(COIL_CURRENT_RMS);
+  driver4.rms_current(COIL_CURRENT_RMS);
   driver.microsteps(16);
   driver2.microsteps(16);
   driver3.microsteps(16);
   driver4.microsteps(16);
-  driver.TCOOLTHRS(0x3FF);  // 10bit max
-  driver2.TCOOLTHRS(0x3FF); // 10bit max
-  driver3.TCOOLTHRS(0x3FF); // 10bit max
-  driver4.TCOOLTHRS(0x3FF); // 10bit max
+  driver.TCOOLTHRS(colthrs);  // 10bit max
+  driver2.TCOOLTHRS(colthrs); // 10bit max
+  driver3.TCOOLTHRS(colthrs); // 10bit max
+  driver4.TCOOLTHRS(colthrs); // 10bit max
 
   driver.semin(semin);  // If SG value is below this * 32, the current will be increased
   driver2.semin(semin); // If SG value is below this * 32, the current will be increased
@@ -64,10 +64,11 @@ char BMinitialize()
   driver2.SGTHRS(sgthrs); // If SG value falls below this * 2 then the diag output will become active
   driver3.SGTHRS(sgthrs); // If SG value falls below this * 2 then the diag output will become active
   driver4.SGTHRS(sgthrs); // If SG value falls below this * 2 then the diag output will become active
-  driver.VACTUAL(11000);
-  driver2.VACTUAL(11000);
-  driver3.VACTUAL(11000);
-  driver4.VACTUAL(11000);
+
+  driver.VACTUAL(0);
+  driver2.VACTUAL(0);
+  driver3.VACTUAL(0);
+  driver4.VACTUAL(0);
   driverDisable();
 }
 
@@ -83,7 +84,7 @@ void driverDisable()
 
 void driverMove(short LH, short RH, short LB, short RB, bool timing = true)
 {
-  if (abs(LH) > 11000 || abs(RH) > 11000 || abs(LB) > 11000 || abs(RB) > 11000)
+  if (abs(LH) > MAX_RELIABLE_SPEED || abs(RH) > MAX_RELIABLE_SPEED || abs(LB) > MAX_RELIABLE_SPEED || abs(RB) > MAX_RELIABLE_SPEED)
   {
     Serial2.print("EE#Unreliable speed#");
     Serial2.print(LH);
@@ -107,15 +108,15 @@ void driverMove(short LH, short RH, short LB, short RB, bool timing = true)
 
 short inline cs(double s)
 {
-  return s / 0.0000209390195767;
+  return s / MOVING_CONST;
 }
 
 void MoveAtVelocity(double f, double r, double turnr)
 {
-  short LH = cs(f + r + (turnr * 0.109));
-  short RH = cs(f - r - (turnr * 0.109));
-  short LB = cs(f - r + (turnr * 0.109));
-  short RB = cs(f + r - (turnr * 0.109));
+  short LH = cs(f + r + (turnr * TURNING_CONST));
+  short RH = cs(f - r - (turnr * TURNING_CONST));
+  short LB = cs(f - r + (turnr * TURNING_CONST));
+  short RB = cs(f + r - (turnr * TURNING_CONST));
   driverMove(LH, RH, LB, RB, false);
 }
 

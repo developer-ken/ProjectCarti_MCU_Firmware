@@ -4,6 +4,8 @@
 #include "BaseMovement.h"
 #include "SerialCommunication.h"
 
+// 电机和机架参数修改请看BaseMovement.h文件
+
 #define ARGBLED 17
 #define BEEPPIN 12
 
